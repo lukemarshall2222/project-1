@@ -96,10 +96,8 @@ def respond(sock):
 
     parts = request.split()
     filename = f"{docroot}{parts[1]}"
-    illegal = False
-    for part in parts: illegal = True if ('~' in part or '..' in part) else illegal
     if len(parts) > 1 and parts[0] == "GET":
-        if illegal:
+        if ('~' in parts[1]) or ('..' in parts[1]):
             transmit(STATUS_FORBIDDEN, sock)
             transmit("Your request could not be processed because of illegal characters, either '~' or '..'", sock)
         elif filename != f"{docroot}/" and os.path.exists(filename):
@@ -110,7 +108,7 @@ def respond(sock):
             transmit(content, sock)
         elif filename != f"{docroot}/" and not os.path.exists(filename):
             transmit(STATUS_NOT_FOUND, sock)
-            transmit(f"Your request could not be processed because {filename} did not match any server files")
+            transmit(f"Your request could not be processed because {filename} did not match any server files", sock)
         else:
             transmit(STATUS_OK, sock)
             transmit(CAT, sock)
