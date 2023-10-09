@@ -1,5 +1,5 @@
 """
-  A trivial web server in Python.
+  A trivial web server in Python. 
 
   Based largely on https://docs.python.org/3.4/howto/sockets.html
   This trivial implementation is not robust:  We have omitted decent
@@ -22,6 +22,7 @@ log = logging.getLogger(__name__)
 
 import socket    # Basic TCP/IP communication on the internet
 import _thread   # Response computation runs concurrently with main program
+import os
 
 
 def listen(portnum):
@@ -89,10 +90,30 @@ def respond(sock):
     log.info("--- Received request ----")
     log.info("Request was {}\n***\n".format(request))
 
+    options = get_options()
+    docroot = options.DOCROOT
+
+
     parts = request.split()
+    filename = f"{docroot}{parts[1]}"
+    illegal = False
+    for part in parts: illegal = True if ('~' in part or '..' in part) else illegal
     if len(parts) > 1 and parts[0] == "GET":
-        transmit(STATUS_OK, sock)
-        transmit(CAT, sock)
+        if illegal:
+            transmit(STATUS_FORBIDDEN, sock)
+            transmit("Your request could not be processed because of illegal characters, either '~' or '..'", sock)
+        elif filename != f"{docroot}/" and os.path.exists(filename):
+            with open(filename, 'r') as file:
+                content = file.read()
+                file.close()
+            transmit(STATUS_OK, sock)
+            transmit(content, sock)
+        elif filename != f"{docroot}/" and not os.path.exists(filename):
+            transmit(STATUS_NOT_FOUND, sock)
+            transmit(f"Your request could not be processed because {filename} did not match any server files")
+        else:
+            transmit(STATUS_OK, sock)
+            transmit(CAT, sock)
     else:
         log.info("Unhandled request: {}".format(request))
         transmit(STATUS_NOT_IMPLEMENTED, sock)
